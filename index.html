@@ -5,6 +5,64 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <title>Expense Tracker</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    .header {
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      padding: 10px;
+    }
+    .container {
+      padding: 10px;
+    }
+    .date-header {
+    background-color:burlywood;
+      font-size: 15px;
+      font-weight: bold;
+      margin-top: 20px;
+    }
+    .date-header-end{
+        background-color:cadetblue;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 2px;
+    }
+    .item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #ddd;
+      padding: 10px 5px;
+      margin-bottom: 5px;
+      font-size: 14px;
+    }
+    .item img {
+      width: 40px;
+      height: 40px;
+      margin-right: 10px;
+    }
+    .item-details {
+      flex: 1;
+    }
+    .item-time {
+      font-size: 12px;
+      color: #888;
+    }
+    .loader {
+      text-align: center;
+      margin: 20px;
+    }
+    .buttons {
+      display: flex;
+      justify-content: space-around;
+      padding: 10px;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
   <div class="header">Expense Tracker</div>
@@ -45,28 +103,51 @@
     }
 
     function displayTransactions(transactions) {
-      transactions.forEach(item => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'item';
-        console.log(item.amount+ item.available_balance)
-        itemDiv.innerHTML = `
-          <img src=${ item.icon || "https://cdn.pixabay.com/photo/2016/12/27/13/10/logo-1933884_640.png"} alt="icon">
-          <div class="item-details">
-            <div><strong>${item.title}</strong></div>
-            <div>Amount: <span class="amount">₹${item.amount}</span></div>
-            <div>Available Balance: <span class="balance">₹${item.available_balance}</span></div>
-            <div>Previous Balance: <span class="balance">₹${parseFloat(item.available_balance) + parseFloat(item.amount)}</span></div>
-            <div>Date: ${new Date(item.created_at).toLocaleString()}</div>
-          </div>
-        `;
-        
-        itemDiv.addEventListener('click', () => {
-          // Store the item details in localStorage or redirect with query params
-          localStorage.setItem('selectedItem', JSON.stringify(item));
-          window.location.href = 'item-details.html';  // Redirect to item detail page
+      const groupedByDate = transactions.reduce((acc, transaction) => {
+        const date = new Date(transaction.created_at).toDateString();
+        if (!acc[date]) acc[date] = [];
+        acc[date].push(transaction);
+        return acc;
+      }, {});
+
+      Object.keys(groupedByDate).forEach(date => {
+        const dateHeader = document.createElement('div');
+        dateHeader.className = 'date-header';
+        dateHeader.textContent = date;
+        transactionsContainer.appendChild(dateHeader);
+        total = 0
+
+        groupedByDate[date].forEach(item => {
+          const itemDiv = document.createElement('div');
+          itemDiv.className = 'item';
+          const time = new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          itemDiv.innerHTML = `
+            <img src=${item.icon || "https://cdn.pixabay.com/photo/2016/12/27/13/10/logo-1933884_640.png"} alt="icon">
+            <div class="item-details">
+              <div><strong>${item.title}</strong></div>
+              <div>Amount: ₹${item.amount}</div>
+              <div>Available Balance: ₹${item.available_balance}</div>
+              <div>Previous Balance: ₹${parseFloat(item.available_balance) + parseFloat(item.amount)}</div>
+              <div>Remark: ${item.remark || "N/A"}</div>
+            </div>
+            <div class="item-time">${time}</div>
+          `;
+
+          itemDiv.addEventListener('click', () => {
+            localStorage.setItem('selectedItem', JSON.stringify(item));
+            window.location.href = 'item-details.html';
+          });
+
+          transactionsContainer.appendChild(itemDiv);
+          total += parseFloat(item.amount)
         });
 
-        transactionsContainer.appendChild(itemDiv);
+        const dateHeader_end = document.createElement('div');
+        dateHeader_end.className = 'date-header-end';
+        dateHeader_end.textContent = `Day Total = ₹${total}`;
+        transactionsContainer.appendChild(dateHeader_end);
+
+        
       });
     }
 
@@ -77,23 +158,22 @@
       }
     });
 
+    syncButton.addEventListener('click', async () => {
+      try {
+        const response = await fetch('https://iujebad32f3nbxwmn2g2ybi5nq0irhnx.lambda-url.us-east-2.on.aws/prod/expense-tracker/sync', {
+          method: 'GET'
+        });
 
-    syncButton.addEventListener('click', async ()=>{
-        try {
-            const response = await fetch('https://iujebad32f3nbxwmn2g2ybi5nq0irhnx.lambda-url.us-east-2.on.aws/prod/expense-tracker/sync', {
-                method: 'GET'
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                alert('Sync Successful: ');  // Show success message
-            } else {
-                alert('Sync Failed: ');  // Show failure message
-            }
-        } catch (error) {
-            console.error('Error syncing data:', error);
-            alert('Sync Failed: ' + error.message);  // Show error message if the fetch fails
+        if (response.ok) {
+          const data = await response.json();
+          alert('Sync Successful!');
+        } else {
+          alert('Sync Failed!');
         }
+      } catch (error) {
+        console.error('Error syncing data:', error);
+        alert('Sync Failed: ' + error.message);
+      }
     });
 
     window.onload = fetchTransactions;

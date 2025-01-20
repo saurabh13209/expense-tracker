@@ -5,19 +5,99 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Item Details</title>
   <link rel="stylesheet" href="styles.css">
+  <style>
+  body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: #fff;
+  }
+
+  .header {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    position: relative;
+  }
+
+  .back-arrow {
+    font-size: 30px;
+    cursor: pointer;
+    position: absolute;
+    left: 10px;
+  }
+
+    .item-detail-container {
+      font-family: Arial, sans-serif;
+    }
+    .edit-icon {
+      cursor: pointer;
+      margin-left: 5px;
+    }
+    .edit-box {
+      margin-top: 10px;
+      display: none;
+    }
+    .edit-box input {
+      width: 90%;
+      padding: 5px;
+    }
+    .edit-box button {
+      margin: 5px;
+      padding: 5px 10px;
+    }
+    .tags {
+      margin-top: 10px;
+    }
+    .tag-section {
+      margin-bottom: 15px;
+    }
+    .tag-label {
+      font-weight: bold;
+    }
+    .tags span {
+      display: inline-block;
+      background-color: #f0f0f0;
+      padding: 5px;
+      border-radius: 3px;
+      margin: 5px 5px 0 0;
+    }
+  </style>
 </head>
 <body>
-  <div class="header">Details</div>
-  <div class="item-detail-container" id="itemDetailContainer">
-    <!-- Item details will be populated here -->
+  <div class="header">
+    <span class="back-arrow" id="backArrow" title="Go Back">&#8592;</span>
+    Details
   </div>
+  <div class="item-detail-container" id="itemDetailContainer"></div>
 
   <script>
+    const backArrow = document.getElementById('backArrow');
+
+    backArrow.onclick = () => {
+      window.history.back(); // Navigates to the previous page in the browser history
+    };
     const itemDetailContainer = document.getElementById('itemDetailContainer');
 
     window.onload = () => {
       const item = JSON.parse(localStorage.getItem('selectedItem'));
-      
+
+      async function updateTransactions(transaction_id, payload = {}) {
+        const response = await fetch(`https://iujebad32f3nbxwmn2g2ybi5nq0irhnx.lambda-url.us-east-2.on.aws/prod/expense-tracker/update-transaction`, {
+          method: 'POST',
+          body: JSON.stringify({ transaction_id, payload })
+        });
+        const data = await response.json();
+      }
+
       if (item) {
         itemDetailContainer.innerHTML = `
           <h2>${item.title}</h2>
@@ -25,12 +105,91 @@
           <p><strong>Amount:</strong> ₹${item.amount}</p>
           <p><strong>Balance:</strong> ₹${item.available_balance}</p>
           <p><strong>Date:</strong> ${new Date(item.created_at).toLocaleString()}</p>
-          <p><strong>Description:</strong> ${item.description || 'N/A'}</p>
+          <p>
+            <strong>Description:</strong> 
+            <span id="descriptionText">${item.remark || 'N/A'}</span>
+            <span class="edit-icon" id="editDescriptionIcon" title="Edit">&#9998;</span>
+          </p>
+          <div class="edit-box" id="editDescriptionBox">
+            <input type="text" id="editDescriptionInput" value="${item.remark || ''}">
+            <button id="saveDescriptionButton">OK</button>
+            <button id="cancelDescriptionButton">Cancel</button>
+          </div>
+          <div class="tags">
+            <div class="tag-section">
+              <span class="tag-label">User Tags:</span>
+              <span id="userTags">${item.user_tags.join(', ') || 'None'}</span>
+              <span class="edit-icon" id="editUserTagsIcon" title="Edit">&#9998;</span>
+            </div>
+            <div class="edit-box" id="editUserTagsBox">
+              <input type="text" id="editUserTagsInput" value="${item.user_tags.join(', ')}">
+              <button id="saveUserTagsButton">OK</button>
+              <button id="cancelUserTagsButton">Cancel</button>
+            </div>
+            <div class="tag-section">
+              <span class="tag-label">Default Tags:</span>
+              <span>${item.default_tags.join(', ') || 'None'}</span>
+            </div>
+          </div>
         `;
+
+        // Edit remark
+        const editDescriptionIcon = document.getElementById('editDescriptionIcon');
+        const editDescriptionBox = document.getElementById('editDescriptionBox');
+        const descriptionText = document.getElementById('descriptionText');
+        const editDescriptionInput = document.getElementById('editDescriptionInput');
+        const saveDescriptionButton = document.getElementById('saveDescriptionButton');
+        const cancelDescriptionButton = document.getElementById('cancelDescriptionButton');
+
+        editDescriptionIcon.onclick = () => {
+          editDescriptionBox.style.display = 'block';
+          editDescriptionInput.focus();
+        };
+
+        saveDescriptionButton.onclick = () => {
+          const updatedRemark = editDescriptionInput.value.trim();
+          descriptionText.textContent = updatedRemark || 'N/A';
+          updateTransactions(item._id, { remark: updatedRemark });
+          item.remark = updatedRemark;
+          localStorage.setItem('selectedItem', JSON.stringify(item));
+          editDescriptionBox.style.display = 'none';
+        };
+
+        cancelDescriptionButton.onclick = () => {
+          editDescriptionBox.style.display = 'none';
+          editDescriptionInput.value = item.remark || '';
+        };
+
+        // Edit user tags
+        const editUserTagsIcon = document.getElementById('editUserTagsIcon');
+        const editUserTagsBox = document.getElementById('editUserTagsBox');
+        const userTags = document.getElementById('userTags');
+        const editUserTagsInput = document.getElementById('editUserTagsInput');
+        const saveUserTagsButton = document.getElementById('saveUserTagsButton');
+        const cancelUserTagsButton = document.getElementById('cancelUserTagsButton');
+
+        editUserTagsIcon.onclick = () => {
+          editUserTagsBox.style.display = 'block';
+          editUserTagsInput.focus();
+        };
+
+        saveUserTagsButton.onclick = () => {
+          const updatedUserTags = editUserTagsInput.value.split(',').map(tag => tag.trim());
+          userTags.textContent = updatedUserTags.join(', ') || 'None';
+          updateTransactions(item._id, { user_tags: updatedUserTags });
+          item.user_tags = updatedUserTags;
+          localStorage.setItem('selectedItem', JSON.stringify(item));
+          editUserTagsBox.style.display = 'none';
+        };
+
+        cancelUserTagsButton.onclick = () => {
+          editUserTagsBox.style.display = 'none';
+          editUserTagsInput.value = item.user_tags.join(', ');
+        };
       } else {
         itemDetailContainer.innerHTML = `<p>No item data available.</p>`;
       }
-    }
+    };
   </script>
 </body>
 </html>
