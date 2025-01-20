@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Item Details</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="header">Details</div>
+  <div class="item-detail-container" id="itemDetailContainer">
+    <!-- Item details will be populated here -->
+  </div>
+
+  <script>
+    const itemDetailContainer = document.getElementById('itemDetailContainer');
+
+    window.onload = () => {
+      const item = JSON.parse(localStorage.getItem('selectedItem'));
+      
+      if (item) {
+        itemDetailContainer.innerHTML = `
+          <h2>${item.title}</h2>
+          <img id='image' src="${item.icon || "https://cdn.pixabay.com/photo/2016/12/27/13/10/logo-1933884_640.png"}" alt="icon">
+          <p><strong>Amount:</strong> ₹${item.amount}</p>
+          <p><strong>Balance:</strong> ₹${item.available_balance}</p>
+          <p><strong>Date:</strong> ${new Date(item.created_at).toLocaleString()}</p>
+          <p><strong>Description:</strong> ${item.description || 'N/A'}</p>
+        `;
+      } else {
+        itemDetailContainer.innerHTML = `<p>No item data available.</p>`;
+      }
+    }
+  </script>
+</body>
+</html>
